@@ -187,6 +187,9 @@ status_t AudioPolicyManagerCustom::setDeviceConnectionStateInt(audio_devices_t d
             }
             // Propagate device availability to Engine
             mEngine->setDeviceConnectionState(devDesc, state);
+            if (device == AUDIO_DEVICE_OUT_AUX_DIGITAL) {
+                chkDpConnAndAllowedForVoice();
+            }
 
             // outputs should never be empty here
             ALOG_ASSERT(outputs.size() != 0, "setDeviceConnectionState():"
@@ -231,6 +234,9 @@ status_t AudioPolicyManagerCustom::setDeviceConnectionStateInt(audio_devices_t d
 
             // Propagate device availability to Engine
             mEngine->setDeviceConnectionState(devDesc, state);
+            if (device == AUDIO_DEVICE_OUT_AUX_DIGITAL) {
+                mEngine->setDpConnAndAllowedForVoice(false);
+            }
             } break;
 
         default:
@@ -393,6 +399,20 @@ status_t AudioPolicyManagerCustom::setDeviceConnectionStateInt(audio_devices_t d
 
     ALOGW("setDeviceConnectionState() invalid device: %x", device);
     return BAD_VALUE;
+}
+
+void AudioPolicyManagerCustom::chkDpConnAndAllowedForVoice()
+{
+    String8 value;
+    bool connAndAllowed = false;
+    String8 valueStr = mpClientInterface->getParameters((audio_io_handle_t)0,
+                                                        String8("dp_for_voice"));
+
+    AudioParameter result = AudioParameter(valueStr);
+    if (result.get(String8("dp_for_voice"), value) == NO_ERROR) {
+        connAndAllowed = value.contains("true");
+    }
+    mEngine->setDpConnAndAllowedForVoice(connAndAllowed);
 }
 
 bool AudioPolicyManagerCustom::isInvalidationOfMusicStreamNeeded(routing_strategy strategy)
@@ -1069,7 +1089,7 @@ status_t AudioPolicyManagerCustom::stopSource(const sp<AudioOutputDescriptor>& o
                         outputDesc->sharesHwModuleWith(desc) &&
                         (newDevice != desc->device())) {
                         audio_devices_t dev = getNewOutputDevice(mOutputs.valueFor(curOutput), false /*fromCache*/);
-                        bool force = desc->device() != dev;
+                        bool force = prevDevice != dev;
                         uint32_t delayMs;
                         if (dev == prevDevice) {
                             delayMs = 0;
@@ -1372,7 +1392,11 @@ status_t AudioPolicyManagerCustom::getOutputForAttr(const audio_attributes_t *at
                                                     uid_t uid,
                                                     const audio_config_t *config,
                                                     audio_output_flags_t flags,
+#ifdef O_MR1
+                                                    audio_port_handle_t *selectedDeviceId,
+#else
                                                     audio_port_handle_t selectedDeviceId,
+#endif
                                                     audio_port_handle_t *portId)
 {
     audio_offload_info_t tOffloadInfo = AUDIO_INFO_INITIALIZER;
@@ -1398,7 +1422,12 @@ status_t AudioPolicyManagerCustom::getOutputForAttr(const audio_attributes_t *at
 
     return AudioPolicyManager::getOutputForAttr(attr, output, session, stream,
                                                 (uid_t)uid, &tConfig,
-                                                flags, (audio_port_handle_t)selectedDeviceId,
+                                                flags,
+#ifdef O_MR1
+                                                (audio_port_handle_t*)selectedDeviceId,
+#else
+                                                (audio_port_handle_t)selectedDeviceId,
+#endif
                                                 portId);
 }
 
@@ -1469,40 +1498,39 @@ audio_io_handle_t AudioPolicyManagerCustom::getOutputForDevice(
        }
 
 #ifdef COMPRESS_VOIP_ENABLED
-    if ((stream == AUDIO_STREAM_VOICE_CALL) &&
-        (channelMask == 1) &&
-        (samplingRate == 8000 || samplingRate == 16000 ||
-         samplingRate == 32000 || samplingRate == 48000)) {
-        // Allow Voip direct output only if:
-        // audio mode is MODE_IN_COMMUNCATION; AND
-        // voip output is not opened already; AND
-        // requested sample rate matches with that of voip input stream (if opened already)
-        int value = 0;
-        uint32_t mode = 0, voipOutCount = 1, voipSampleRate = 1;
-        String8 valueStr = mpClientInterface->getParameters((audio_io_handle_t)0,
-                                                           String8("audio_mode"));
-        AudioParameter result = AudioParameter(valueStr);
-        if (result.getInt(String8("audio_mode"), value) == NO_ERROR) {
-            mode = value;
-        }
+    if ((mEngine->getPhoneState() == AUDIO_MODE_IN_COMMUNICATION) &&
+        (stream == AUDIO_STREAM_VOICE_CALL) &&
+        audio_is_linear_pcm(format)) {
+        // let voice stream to go with primary output by default
+        // in case direct voip is bypassed
+        bool use_primary_out = true;
 
-        valueStr =  mpClientInterface->getParameters((audio_io_handle_t)0,
+        if ((channelMask == 1) &&
+                (samplingRate == 8000 || samplingRate == 16000 ||
+                samplingRate == 32000 || samplingRate == 48000)) {
+            // Allow Voip direct output only if:
+            // audio mode is MODE_IN_COMMUNCATION; AND
+            // voip output is not opened already; AND
+            // requested sample rate matches with that of voip input stream (if opened already)
+            int value = 0;
+            uint32_t voipOutCount = 1, voipSampleRate = 1;
+
+            valueStr = mpClientInterface->getParameters((audio_io_handle_t)0,
                                               String8("voip_out_stream_count"));
-        result = AudioParameter(valueStr);
-        if (result.getInt(String8("voip_out_stream_count"), value) == NO_ERROR) {
-            voipOutCount = value;
-        }
+            result = AudioParameter(valueStr);
+            if (result.getInt(String8("voip_out_stream_count"), value) == NO_ERROR) {
+                voipOutCount = value;
+            }
 
-        valueStr = mpClientInterface->getParameters((audio_io_handle_t)0,
+            valueStr = mpClientInterface->getParameters((audio_io_handle_t)0,
                                               String8("voip_sample_rate"));
-        result = AudioParameter(valueStr);
-        if (result.getInt(String8("voip_sample_rate"), value) == NO_ERROR) {
-            voipSampleRate = value;
-        }
+            result = AudioParameter(valueStr);
+            if (result.getInt(String8("voip_sample_rate"), value) == NO_ERROR) {
+                voipSampleRate = value;
+            }
 
-        if ((mode == AUDIO_MODE_IN_COMMUNICATION) && (voipOutCount == 0) &&
-            ((voipSampleRate == 0) || (voipSampleRate == samplingRate))) {
-            if (audio_is_linear_pcm(format)) {
+            if ((voipOutCount == 0) &&
+                ((voipSampleRate == 0) || (voipSampleRate == samplingRate))) {
                 char propValue[PROPERTY_VALUE_MAX] = {0};
                 property_get("vendor.voice.path.for.pcm.voip", propValue, "0");
                 bool voipPcmSysPropEnabled = !strncmp("true", propValue, sizeof("true"));
@@ -1510,18 +1538,34 @@ audio_io_handle_t AudioPolicyManagerCustom::getOutputForDevice(
                     flags = (audio_output_flags_t)(AUDIO_OUTPUT_FLAG_VOIP_RX |
                                                  AUDIO_OUTPUT_FLAG_DIRECT);
                     ALOGD("Set VoIP and Direct output flags for PCM format");
-                } else {
-                   //If VoIP is going in audio path, make VoIP use primary output
-                   flags = (audio_output_flags_t)(AUDIO_OUTPUT_FLAG_FAST|AUDIO_OUTPUT_FLAG_PRIMARY);
+                    use_primary_out = false;
                 }
             }
         }
+
+        if (use_primary_out) {
+            flags = (audio_output_flags_t)(AUDIO_OUTPUT_FLAG_FAST|AUDIO_OUTPUT_FLAG_PRIMARY);
+        }
 #else
-    if (stream == AUDIO_STREAM_VOICE_CALL &&
+    if (mEngine->getPhoneState() == AUDIO_MODE_IN_COMMUNICATION &&
+        stream == AUDIO_STREAM_VOICE_CALL &&
         audio_is_linear_pcm(format)) {
-        flags = (audio_output_flags_t)(AUDIO_OUTPUT_FLAG_VOIP_RX |
-                                       AUDIO_OUTPUT_FLAG_DIRECT);
-        ALOGV("Set VoIP and Direct output flags for PCM format");
+        //check if VoIP output is not opened already
+        bool voip_pcm_already_in_use = false;
+        for (size_t i = 0; i < mOutputs.size(); i++) {
+             sp<SwAudioOutputDescriptor> desc = mOutputs.valueAt(i);
+             if (desc->mFlags == (AUDIO_OUTPUT_FLAG_VOIP_RX | AUDIO_OUTPUT_FLAG_DIRECT)) {
+                 voip_pcm_already_in_use = true;
+                 ALOGD("VoIP PCM already in use");
+                 break;
+             }
+        }
+
+        if (!voip_pcm_already_in_use) {
+            flags = (audio_output_flags_t)(AUDIO_OUTPUT_FLAG_VOIP_RX |
+                                           AUDIO_OUTPUT_FLAG_DIRECT);
+            ALOGV("Set VoIP and Direct output flags for PCM format");
+        }
 #endif
         //IF VOIP is going to be started at the same time as when
         //vr is enabled, get VOIP to fallback to low latency
@@ -1927,7 +1971,11 @@ status_t AudioPolicyManagerCustom::getInputForAttr(const audio_attributes_t *att
                                          uid_t uid,
                                          const audio_config_base_t *config,
                                          audio_input_flags_t flags,
+#ifdef O_MR1
+                                         audio_port_handle_t *selectedDeviceId,
+#else
                                          audio_port_handle_t selectedDeviceId,
+#endif
                                          input_type_t *inputType,
                                          audio_port_handle_t *portId)
 {
