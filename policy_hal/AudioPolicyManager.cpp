@@ -2134,6 +2134,7 @@ status_t AudioPolicyManagerCustom::stopInput(audio_port_handle_t portId)
     }
     return status;
 }
+
 AudioPolicyManagerCustom::AudioPolicyManagerCustom(AudioPolicyClientInterface *clientInterface)
     : AudioPolicyManager(clientInterface),
       mFallBackflag(AUDIO_OUTPUT_FLAG_NONE),
