@@ -1461,6 +1461,8 @@ status_t AudioPolicyManagerCustom::getOutputForAttr(const audio_attributes_t *at
         } else {
             ALOGI("%s:: attribute is NULL .. no usage set", __func__);
         }
+    } else if (tConfig.offload_info.channel_mask == AUDIO_CHANNEL_NONE) {
+        tConfig.offload_info.channel_mask = config->channel_mask;
     }
 
     return AudioPolicyManager::getOutputForAttr(attr, output, session, stream,
@@ -1747,12 +1749,10 @@ audio_io_handle_t AudioPolicyManagerCustom::getOutputForDevice(
             if (desc->mFlags == AUDIO_OUTPUT_FLAG_DIRECT) {
                 direct_pcm_already_in_use = true;
                 ALOGD("Direct PCM already in use");
-                break;
             }
             if (desc->mFlags & AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD) {
                 compress_offload_already_in_use = true;
                 ALOGD("Compress Offload already in use");
-                break;
             }
         }
         // prevent direct pcm for non-music stream blindly if direct pcm already in use
