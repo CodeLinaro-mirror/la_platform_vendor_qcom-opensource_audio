@@ -1051,6 +1051,17 @@ status_t AudioPolicyManagerCustom::stopSource(const sp<SwAudioOutputDescriptor>&
             outputDesc->setStopTime(client, systemTime());
             DeviceVector prevDevices = outputDesc->devices();
             DeviceVector newDevices = getNewOutputDevices(outputDesc, false /*fromCache*/);
+
+            // force routing command to audio hardware when enforced stream is completed
+            // on devices with outputs are in different hardware modules.
+            if (isInCall() && hasPrimaryOutput() &&
+                      stream == AUDIO_STREAM_ENFORCED_AUDIBLE &&
+                      outputDesc->isDuplicated() &&
+                      !(outputDesc->subOutput1()->hasSameHwModuleAs(mPrimaryOutput) &&
+                      outputDesc->subOutput2()->hasSameHwModuleAs(mPrimaryOutput))) {
+                updateCallRouting(newDevices);
+            }
+
             // delay the device switch by twice the latency because stopOutput() is executed when
             // the track stop() command is received and at that time the audio track buffer can
             // still contain data that needs to be drained. The latency only covers the audio HAL
