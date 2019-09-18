@@ -18,7 +18,7 @@
  */
 
 #define LOG_TAG "AudioPolicyManagerCustom"
-//#define LOG_NDEBUG 0
+#define LOG_NDEBUG 0
 
 //#define VERY_VERBOSE_LOGGING
 #ifdef VERY_VERBOSE_LOGGING
@@ -2151,6 +2151,9 @@ AudioPolicyManagerCustom::AudioPolicyManagerCustom(AudioPolicyClientInterface *c
 
     if (mApmConfigs->isVoiceConcEnabled())
         mFallBackflag = getFallBackPath();
+
+    // Silence ALOGV statements
+    property_set("log.tag." LOG_TAG, "D");
 }
 
 }
