@@ -1323,7 +1323,9 @@ status_t AudioPolicyManagerCustom::checkAndSetVolume(IVolumeCurves &curves,
     }
 
     float volumeDb = computeVolume(curves, volumeSource, index, device);
-    if (outputDesc->isFixedVolume(device)) {
+    if (outputDesc->isFixedVolume(device) ||
+            // Force VoIP volume to max for bluetooth SCO
+            ((isVoiceVolSrc || isBtScoVolSrc) && (device & AUDIO_DEVICE_OUT_ALL_SCO) != 0)) {
         volumeDb = 0.0f;
     }
 
