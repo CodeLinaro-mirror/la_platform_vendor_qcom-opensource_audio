@@ -2138,6 +2138,50 @@ status_t AudioPolicyManagerCustom::stopInput(audio_port_handle_t portId)
     return status;
 }
 
+status_t AudioPolicyManagerCustom::setUidDeviceAffinities(uid_t uid,
+        const Vector<AudioDeviceTypeAddr>& devices) {
+    ALOGV("%s(): uid=%d num devices %zu", __FUNCTION__, uid, devices.size());
+    // uid/device affinity is only for output devices
+    for (size_t i = 0; i < devices.size(); i++) {
+        if (!audio_is_output_device(devices[i].mType)) {
+            ALOGE("setUidDeviceAffinities() device=%08x is NOT an output device",
+                    devices[i].mType);
+            return BAD_VALUE;
+        }
+    }
+    status_t res =  mPolicyMixes.setUidDeviceAffinities(uid, devices);
+    if (res == NO_ERROR) {
+        // reevaluate outputs for all given devices
+        for (size_t i = 0; i < devices.size(); i++) {
+            sp<DeviceDescriptor> devDesc = mHwModules.getDeviceDescriptor(
+                            devices[i].mType, devices[i].mAddress, String8(),
+                            AUDIO_FORMAT_DEFAULT);
+            SortedVector<audio_io_handle_t> outputs;
+            /* checkOutputsForDevice() will open outputs for matching profiles if needed.
+             * Direct/Compress outputs are also opened to query for dynamic parameters.
+             * However close is not observed later by setDeviceConnectionState() from
+             * framework thus cause subsequent open failure.
+             * Based on design recommendation for Android Automotive, each steam (mix) shall
+             * corresponds to one (BUS) device. Thus bypass checkOutputsForDevice() for BUS
+             * device as a workaround to avoid premature open of direct/compress streams.
+             */
+            if (device_distinguishes_on_address(devices[i].mType)) {
+                ALOGW("%s(): bypass checkOutputsForDevice for device=%08x addr=%s",
+                        __FUNCTION__, devices[i].mType, devices[i].mAddress.string());
+            } else {
+                if (checkOutputsForDevice(devDesc, AUDIO_POLICY_DEVICE_STATE_AVAILABLE,
+                        outputs) != NO_ERROR) {
+                    ALOGE("setUidDeviceAffinities() error in checkOutputsForDevice for device=%08x"
+                            " addr=%s", devices[i].mType, devices[i].mAddress.string());
+                    return INVALID_OPERATION;
+                }
+            }
+        }
+    }
+    return res;
+}
+
+
 AudioPolicyManagerCustom::AudioPolicyManagerCustom(AudioPolicyClientInterface *clientInterface)
     : AudioPolicyManager(clientInterface),
       mFallBackflag(AUDIO_OUTPUT_FLAG_NONE),
