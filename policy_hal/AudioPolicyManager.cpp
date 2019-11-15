@@ -1323,7 +1323,9 @@ status_t AudioPolicyManagerCustom::checkAndSetVolume(IVolumeCurves &curves,
     }
 
     float volumeDb = computeVolume(curves, volumeSource, index, device);
-    if (outputDesc->isFixedVolume(device)) {
+    if (outputDesc->isFixedVolume(device) ||
+            // Force VoIP volume to max for bluetooth SCO
+            ((isVoiceVolSrc || isBtScoVolSrc) && (device & AUDIO_DEVICE_OUT_ALL_SCO) != 0)) {
         volumeDb = 0.0f;
     }
 
@@ -1387,6 +1389,8 @@ status_t AudioPolicyManagerCustom::getOutputForAttr(const audio_attributes_t *at
         } else {
             ALOGI("%s:: attribute is NULL .. no usage set", __func__);
         }
+    } else if (tConfig.offload_info.channel_mask == AUDIO_CHANNEL_NONE) {
+        tConfig.offload_info.channel_mask = config->channel_mask;
     }
 
     return AudioPolicyManager::getOutputForAttr(attr, output, session, stream,
@@ -1758,7 +1762,7 @@ audio_io_handle_t AudioPolicyManagerCustom::getOutputForDevices(
                     // reuse direct output if currently open by the same client
                     // and configured with same parameters
                     if ((config->sample_rate == desc->mSamplingRate) &&
-                        audio_formats_match(config->format, desc->mFormat) &&
+                        (config->format == desc->mFormat) &&
                         (channelMask == desc->mChannelMask) &&
                         (session == desc->mDirectClientSession)) {
                         desc->mDirectOpenCount++;
@@ -1795,8 +1799,7 @@ audio_io_handle_t AudioPolicyManagerCustom::getOutputForDevices(
         // only accept an output with the requested parameters
         if (status != NO_ERROR ||
             (config->sample_rate != 0 && config->sample_rate != outputDesc->mSamplingRate) ||
-            (config->format != AUDIO_FORMAT_DEFAULT &&
-                     !audio_formats_match(config->format, outputDesc->mFormat)) ||
+            (config->format != AUDIO_FORMAT_DEFAULT && config->format != outputDesc->mFormat) ||
             (channelMask != 0 && channelMask != outputDesc->mChannelMask)) {
             ALOGV("getOutputForDevice() failed opening direct output: output %d sample rate %d %d,"
                     "format %d %d, channel mask %04x %04x", output, config->sample_rate,
