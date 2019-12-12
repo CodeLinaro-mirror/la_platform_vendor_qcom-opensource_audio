@@ -113,6 +113,9 @@ public:
         // indicates to the audio policy manager that the input stops being used.
         virtual status_t stopInput(audio_port_handle_t portId);
 
+        virtual status_t setUidDeviceAffinities(uid_t uid,
+                const Vector<AudioDeviceTypeAddr>& devices);
+
         static sp<APMConfigHelper> mApmConfigs;
 
 protected:
