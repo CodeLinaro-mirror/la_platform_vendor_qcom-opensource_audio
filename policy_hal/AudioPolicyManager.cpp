@@ -322,7 +322,8 @@ status_t AudioPolicyManagerCustom::setDeviceConnectionStateInt(audio_devices_t d
         const DeviceVector msdOutDevices = getMsdAudioOutDevices();
         for (size_t i = 0; i < mOutputs.size(); i++) {
             sp<SwAudioOutputDescriptor> desc = mOutputs.valueAt(i);
-            if ((mEngine->getPhoneState() != AUDIO_MODE_IN_CALL) || (desc != mPrimaryOutput)) {
+            if (desc->isActive() && ((mEngine->getPhoneState() != AUDIO_MODE_IN_CALL) ||
+                (desc != mPrimaryOutput))) {
                 DeviceVector newDevices = getNewOutputDevices(desc, true /*fromCache*/);
                 // do not force device change on duplicated output because if device is 0, it will
                 // also force a device 0 for the two outputs it is duplicated to which may override
@@ -1870,7 +1871,7 @@ non_direct_output:
             ALOGI("FLAG None hence request for a primary output");
         }
 
-        output = selectOutput(outputs, *flags, config->format);
+        output = selectOutput(outputs, *flags, config->format, channelMask);
     }
 
     ALOGW_IF((output == 0), "getOutputForDevice() could not find output for stream %d, "
@@ -2169,6 +2170,15 @@ AudioPolicyManagerCustom::AudioPolicyManagerCustom(AudioPolicyClientInterface *c
 
     if (mApmConfigs->isVoiceConcEnabled())
         mFallBackflag = getFallBackPath();
+}
+
+status_t AudioPolicyManagerCustom::dump(int fd)
+{
+    AudioPolicyManager::dump(fd);
+    String8 result;
+    mApmConfigs->dump(&result);
+    write(fd, result.string(), result.size());
+    return NO_ERROR;
 }
 
 }
