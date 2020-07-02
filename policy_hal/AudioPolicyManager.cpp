@@ -849,11 +849,18 @@ bool AudioPolicyManagerCustom::isOffloadSupported(const audio_offload_info_t& of
     }
 
     //If duration is less than minimum value defined in property, return false
+    //Allow all wma and wma-pro format clips to use compress-offload playback path
     char propValue[PROPERTY_VALUE_MAX];
     if (property_get("audio.offload.min.duration.secs", propValue, NULL)) {
         if (offloadInfo.duration_us < (atoi(propValue) * 1000000 )) {
-            ALOGV("Offload denied by duration < audio.offload.min.duration.secs(=%s)", propValue);
-            return false;
+            if (((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_WMA) ||
+                ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_WMA_PRO)) {
+                ALOGV("Allow all wma and wma-pro format clips to use compress-offload playback path\n");
+            }
+            else {
+              ALOGV("Offload denied by duration < audio.offload.min.duration.secs(=%s)", propValue);
+              return false;
+            }
         }
     } else if (offloadInfo.duration_us < OFFLOAD_DEFAULT_MIN_DURATION_SECS * 1000000) {
         ALOGV("Offload denied by duration < default min(=%u)", OFFLOAD_DEFAULT_MIN_DURATION_SECS);
