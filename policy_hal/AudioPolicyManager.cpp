@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2019 The Linux Foundation. All rights reserved.
  * Not a contribution.
  *
  * Copyright (C) 2009 The Android Open Source Project
@@ -629,6 +629,10 @@ bool AudioPolicyManagerCustom::isOffloadSupported(const audio_offload_info_t& of
         return false;
     }
 
+    if (audio_is_linear_pcm(offloadInfo.format) &&
+           property_get_bool("vendor.audio.pcm.direct.disable", false /* default_value */)) {
+        return false;
+    }
     // See if there is a profile to support this.
     // AUDIO_DEVICE_NONE
     sp<IOProfile> profile = getProfileForOutput(DeviceVector() /*ignore device */,
