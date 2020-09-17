@@ -243,12 +243,18 @@ status_t AudioPolicyManagerCustom::setDeviceConnectionStateInt(audio_devices_t d
                 sp<SwAudioOutputDescriptor> desc = mOutputs.valueFor(output);
                 sp<AudioPolicyMix> policyMix = desc->mPolicyMix.promote();
                 if (policyMix != nullptr
-                        && policyMix->mMixType == MIX_TYPE_RECORDERS
                         && strncmp(device_address,
                                    policyMix->mDeviceAddress.string(),
                                    AUDIO_DEVICE_MAX_ADDRESS_LEN) == 0) {
-                    doCheckForDeviceAndOutputChanges = false;
-                    break;
+                    if (policyMix->mMixType == MIX_TYPE_RECORDERS) {
+                        doCheckForDeviceAndOutputChanges = false;
+                    } else if (policyMix->mMixType == MIX_TYPE_PLAYERS) {
+                        // needs to invalidate music stream to route to remote submix because it
+                        // can't pass playback client route evaluation when connecting a remote
+                        // submix output device used by a dynamic policy of type player whatever
+                        // its address is.
+                        mpClientInterface->invalidateStream(AUDIO_STREAM_MUSIC);
+                    }
                 }
             }
         }
@@ -1087,7 +1093,7 @@ status_t AudioPolicyManagerCustom::stopSource(const sp<SwAudioOutputDescriptor>&
                         outputDesc->sharesHwModuleWith(desc) &&
                         (newDevices != desc->devices())) {
                         DeviceVector dev = getNewOutputDevices(mOutputs.valueFor(curOutput), false /*fromCache*/);
-                        bool force = prevDevices != dev;
+                        bool force = desc->devices() != dev;
                         uint32_t delayMs;
                         if (dev == prevDevices) {
                             delayMs = 0;
