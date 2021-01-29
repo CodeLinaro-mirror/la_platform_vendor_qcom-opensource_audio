@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2019, 2021, The Linux Foundation. All rights reserved.
  * Not a contribution.
  *
  * Copyright (C) 2009 The Android Open Source Project
@@ -191,8 +191,13 @@ status_t AudioPolicyManagerCustom::checkOutputsForDevice(const sp<DeviceDescript
             ALOGD("desc->open() for device %08x with params %s ,stream_type %0x ,output_flag %0x ,output_handle %p ,config params as null"
                   ,device,address.string(),(audio_stream_type_t)AUDIO_STREAM_DEFAULT,
                   (audio_output_flags_t)(AUDIO_OUTPUT_SINK_CAPABILITY_DECTECTION), &output);
+#ifdef QAP_EXTN_ENABLED
             status_t status = desc->open(nullptr, device, address,
                                          AUDIO_STREAM_DEFAULT,(audio_output_flags_t)(AUDIO_OUTPUT_SINK_CAPABILITY_DECTECTION), &output);
+#else
+            status_t status = desc->open(nullptr, device, address,
+                                         AUDIO_STREAM_DEFAULT, AUDIO_OUTPUT_FLAG_NONE, &output);
+#endif
             ALOGD("Device caps:Handle desc->open() output_handle %p ",&output);
 
             if (status == NO_ERROR) {
@@ -224,8 +229,13 @@ status_t AudioPolicyManagerCustom::checkOutputsForDevice(const sp<DeviceDescript
                           (audio_output_flags_t)(AUDIO_OUTPUT_SINK_CAPABILITY_DECTECTION), &output);
                     ALOGD("desc->open() config.sample_rate %d, config.channel_mask %d,config.format %d",
                           (uint32_t)config.sample_rate,(unsigned int)config.channel_mask, (unsigned int)config.format);
+#ifdef QAP_EXTN_ENABLED
                     status_t status = desc->open(&config, device, address, AUDIO_STREAM_DEFAULT,
                                                  (audio_output_flags_t)(AUDIO_OUTPUT_SINK_CAPABILITY_DECTECTION), &output);
+#else
+                    status_t status = desc->open(&config, device, address, AUDIO_STREAM_DEFAULT,
+                                                 AUDIO_OUTPUT_FLAG_NONE, &output);
+#endif
                     ALOGD("Device caps:Handle desc->open() output_handle %p ",&output);
                     if (status != NO_ERROR) {
                         output = AUDIO_IO_HANDLE_NONE;

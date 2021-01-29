@@ -76,6 +76,10 @@ ifeq ($(strip $(AUDIO_FEATURE_ENABLED_COMPRESS_VOIP)),true)
     LOCAL_CFLAGS += -DCOMPRESS_VOIP_ENABLED
 endif
 
+ifeq ($(strip $(AUDIO_FEATURE_ENABLED_QAP)),true)
+    LOCAL_CFLAGS += -DQAP_EXTN_ENABLED
+endif
+
 LOCAL_MODULE := libaudiopolicymanager
 
 include $(BUILD_SHARED_LIBRARY)
