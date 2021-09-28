@@ -614,18 +614,35 @@ bool AudioPolicyManagerCustom::isOffloadSupported(const audio_offload_info_t& of
         //do not check duration for other audio formats, e.g. AAC/AC3 and amrwb+ formats
         if ((offloadInfo.format == AUDIO_FORMAT_MP3) ||
             ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_AAC) ||
-            ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_FLAC) ||
             ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_VORBIS))
             return false;
 
+        //check if force to use offload for FLAC format
+        const bool useFlacHwDecoder = property_get_bool("vendor.audio.use.hw.flac.decoder", false /* default_value */);
+        if (!useFlacHwDecoder) {
+            if ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_FLAC)
+                return false;
+        }
+
         if (mApmConfigs->isExtnFormatsEnabled()) {
-            if (((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_WMA) ||
-                ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_WMA_PRO) ||
-                ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_ALAC) ||
-                ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_APE) ||
+            if (((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_ALAC) ||
                 ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_DSD) ||
                 ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_AAC_ADTS))
                 return false;
+
+            //check if force to use offload for WMA format
+            const bool useWmaHwDecoder = property_get_bool("vendor.audio.use.hw.wma.decoder", false /* default_value */);
+            if (!useWmaHwDecoder) {
+                if (((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_WMA) ||
+                    ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_WMA_PRO))
+                    return false;
+            }
+            //check if force to use offload for APE format
+            const bool useApeHwDecoder = property_get_bool("vendor.audio.use.hw.ape.decoder", false /* default_value */);
+            if (!useApeHwDecoder) {
+                if ((offloadInfo.format & AUDIO_FORMAT_MAIN_MASK) == AUDIO_FORMAT_APE)
+                return false;
+            }
         }
     }
 
