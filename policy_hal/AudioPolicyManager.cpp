@@ -1449,7 +1449,8 @@ audio_io_handle_t AudioPolicyManagerCustom::getOutputForDevices(
 {
     audio_io_handle_t output = AUDIO_IO_HANDLE_NONE;
     status_t status;
-
+    ALOGV("%s: stream:%d, flags:0x%08X, config->rate:%d, config->channel_mask:0x%08X, format:0x%08X"
+          , __func__, stream, *flags, config->sample_rate, config->channel_mask, config->format);
     // Discard haptic channel mask when forcing muting haptic channels.
     audio_channel_mask_t channelMask = forceMutingHaptic
             ? (config->channel_mask & ~AUDIO_CHANNEL_HAPTIC_ALL) : config->channel_mask;
@@ -1877,7 +1878,8 @@ non_direct_output:
             ALOGI("FLAG None hence request for a primary output");
         }
 
-        output = selectOutput(outputs, *flags, config->format, channelMask);
+        output = selectOutput(outputs, *flags, config->format, config->channel_mask,
+            config->sample_rate);
     }
 
     ALOGW_IF((output == 0), "getOutputForDevice() could not find output for stream %d, "
