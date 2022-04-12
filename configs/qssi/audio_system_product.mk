@@ -1,4 +1,4 @@
-MM_AUDIO += libaudiohal
+MM_AUDIO := libaudiohal
 MM_AUDIO += audiosphere
 MM_AUDIO += audiosphere.xml
 MM_AUDIO += vendor.qti.voiceprint-V1.0-java
@@ -14,8 +14,17 @@ MM_AUDIO += libvr_object_engine
 MM_AUDIO += libvr_sam_wrapper
 MM_AUDIO += vendor.qti.voiceprint@1.0
 MM_AUDIO += libaudio-resampler
+MM_AUDIO += libaudioprocessing
+MM_AUDIO += libaudiopolicymanagerdefault
+MM_AUDIO += libaudiopolicyenginedefault
 
-MM_AUDIO_DBG += MhaPlayerDemoApp
+MM_AUDIO += mixerops_objdump
+MM_AUDIO += test-mixer
+MM_AUDIO += test-resampler
+MM_AUDIO += mixerops_benchmark
+MM_AUDIO += resampler_tests
+
+MM_AUDIO_DBG := MhaPlayerDemoApp
 MM_AUDIO_DBG += MhaRecorderDemoApp
 
 PRODUCT_PACKAGES += $(MM_AUDIO)
