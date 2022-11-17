@@ -5,7 +5,9 @@ MM_AUDIO += vendor.qti.voiceprint-V1.0-java
 MM_AUDIO += libbinauralrenderer_wrapper.qti
 MM_AUDIO += libhoaeffects_csim
 MM_AUDIO += libhoaeffects.qti
+ifneq ($(TARGET_WONT_SUPPORT_SVA_APK), true)
 MM_AUDIO += liblistenjni.qti
+endif
 MM_AUDIO += liblistensoundmodel2.qti
 MM_AUDIO += libvr_amb_engine
 MM_AUDIO += libvraudio_client.qti
