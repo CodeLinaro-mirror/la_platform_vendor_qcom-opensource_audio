@@ -52,7 +52,7 @@ af.fast_track_multiplier=1
 
 #Enable offload audio video playback by default
 PRODUCT_PRODUCT_PROPERTIES += \
-audio.offload.video=true
+audio.offload.video=false
 
 #Enable music through deep buffer
 PRODUCT_PRODUCT_PROPERTIES += \
