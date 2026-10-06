@@ -1,6 +1,8 @@
 MM_AUDIO := libaudiohal
+ifneq ($(TARGET_SDV_ENABLED),true)
 MM_AUDIO += audiosphere
 MM_AUDIO += audiosphere.xml
+endif #TARGET_SDV_ENABLED
 MM_AUDIO += libbinauralrenderer_wrapper.qti
 MM_AUDIO += libhoaeffects_csim
 MM_AUDIO += libhoaeffects.qti
@@ -43,6 +45,6 @@ MM_AUDIO_DBG += MhaRecorderDemoApp
 
 PRODUCT_PACKAGES += $(MM_AUDIO)
 
-ifneq ($(TARGET_PRODUCT),qssi_au_sdv)
+ifneq ($(TARGET_SDV_ENABLED),true)
 PRODUCT_PACKAGES_DEBUG += $(MM_AUDIO_DBG)
 endif
