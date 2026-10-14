@@ -42,4 +42,7 @@ MM_AUDIO_DBG := MhaPlayerDemoApp
 MM_AUDIO_DBG += MhaRecorderDemoApp
 
 PRODUCT_PACKAGES += $(MM_AUDIO)
+
+ifneq ($(TARGET_PRODUCT),qssi_au_sdv)
 PRODUCT_PACKAGES_DEBUG += $(MM_AUDIO_DBG)
+endif
