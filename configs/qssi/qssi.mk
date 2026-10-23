@@ -138,7 +138,9 @@ PRODUCT_PACKAGES_ENG += \
     VoicePrintTest \
     VoicePrintDemo
 
+ifneq ($(TARGET_SDV_ENABLED),true)
 PRODUCT_PACKAGES_DEBUG += \
     AudioSettings
+endif #TARGET_SDV_ENABLED
 
 PRODUCT_PACKAGES += libnbaio
